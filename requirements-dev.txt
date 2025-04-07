@@ -1,0 +1,14 @@
+# install in editable mode
+#-e .
+
+# pre-commit
+pre-commit >= 4.2.0
+
+# testing
+pytest >= 7.4.3
+
+# linting and formatting
+ruff >= 0.11.4
+
+# static type checking
+mypy >= 1.15.0
