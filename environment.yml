@@ -86,7 +86,8 @@ dependencies:
       - jupyterlab-pygments==0.3.0
       - jupyterlab-server==2.27.3
       - kiwisolver==1.4.8
-      - koopmag==0.0.1
+      # - koopmag==0.0.1
+      - -e .
       - magtense==2.2.2
       - markupsafe==3.0.2
       - matplotlib==3.10.1
