@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from magtense.micromag import MicromagProblem
 from matplotlib.lines import Line2D
-
+from matplotlib.axes import Axes
+from typing import Optional
 
 def gen_s_state(
     res: tuple,
@@ -135,3 +136,35 @@ def plot_dynamics(
         title += f", Field {field}"
     plt.title(title)
     plt.show()
+
+
+def plot_avg(
+        data : np.ndarray, 
+        ax : Axes, 
+        ts : Optional[np.ndarray] = None, 
+        linestyle : str = "-", 
+        linewidth : int = 2, 
+        annot : str = "",
+        ) -> None:
+
+    if ts is None:
+        ts = np.arange(data.shape[0])
+
+    mg_x = data[:, :, :, 0].reshape(data.shape[0], -1)
+    mg_y = data[:, :, :, 1].reshape(data.shape[0], -1)
+    mg_z = data[:, :, :, 2].reshape(data.shape[0], -1)
+
+    avg_mg_x = np.mean(mg_x, axis=1)
+    avg_mg_y = np.mean(mg_y, axis=1)
+    avg_mg_z = np.mean(mg_z, axis=1)
+
+    ax.plot(ts, avg_mg_x, label=f'mg_x {annot}', 
+            linestyle=linestyle, color="red", linewidth=linewidth)
+    
+    ax.plot(ts, avg_mg_y, label=f'mg_y {annot}', 
+            linestyle=linestyle, color="green", linewidth=linewidth)
+    
+    ax.plot(ts, avg_mg_z, label=f'mg_z {annot}', 
+            linestyle=linestyle, color="blue", linewidth=linewidth)
+
+    ax.legend(ncol=2, loc="upper right")

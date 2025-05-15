@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset
 from typing import Optional
 import numpy as np
 
@@ -7,6 +7,7 @@ import numpy as np
 class SlidingWindowDataset(Dataset):
     '''
     Creates a sliding window dataset from a sequence of magtense simulations.
+    Generated with chatGPT
     '''
     def __init__(self, X, U, window_size=32, step=1) -> None:
         """
@@ -35,8 +36,9 @@ class SlidingWindowDataset(Dataset):
         return x_window, u_window
 
 
-def train_test_split(DATA : np.ndarray, 
+def train_test_split(X : np.ndarray, 
                      Hs : np.ndarray, 
+                     dataset_type : str = "window",
                      test_size : float = 0.2, 
                      window_size : int = 32,
                      step : int = 1,
@@ -51,7 +53,7 @@ def train_test_split(DATA : np.ndarray,
     if seed is not None:
         torch.manual_seed(seed)
         
-    X = torch.tensor(DATA).to(torch.float32)
+    X = torch.tensor(X).to(torch.float32)
 
     U = torch.stack([
     torch.stack([torch.tensor(Hs[i]).to(torch.float32) for _ in range(X.shape[1])])
@@ -66,12 +68,16 @@ def train_test_split(DATA : np.ndarray,
     
     X_train = X[train_indices]
     U_train = U[train_indices]
-
-    train_dataset = SlidingWindowDataset(X_train, U_train, window_size=window_size, step=step)
     
     X_test = X[test_indices]
     U_test = U[test_indices]
 
-    test_dataset = SlidingWindowDataset(X_test, U_test, window_size=window_size, step=step)
+    if dataset_type == "window":
+        train_dataset = SlidingWindowDataset(X_train, U_train, window_size=window_size, step=step)
+        test_dataset = SlidingWindowDataset(X_test, U_test, window_size=window_size, step=step)
     
-    return train_dataset, test_dataset
+    elif dataset_type == "full":
+        train_dataset = TensorDataset(X_train, U_train)
+        test_dataset = TensorDataset(X_test, U_test)
+    
+    return train_dataset, test_dataset, train_indices, test_indices
