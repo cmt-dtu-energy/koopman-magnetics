@@ -9,7 +9,7 @@ from magtense.utils import plot_M_thin_film
 
 from koopmag.database import create_db_mp
 from koopmag.utils import plot_dynamics
-from koopmag.data_utils import train_test_split
+from koopmag.data_utils import train_test_val_split
 from koopmag.koopman_model import DeepKoopman
 
 import torch
@@ -24,7 +24,7 @@ def main():
     datapath = Path().cwd().parent / "data"
     imgpath = Path().cwd().parent / "images"
 
-    dataset_name = "120_150_40_16.h5"
+    dataset_name = "1000_150_40_16.h5"
 
     try:
         db = h5py.File(datapath / dataset_name, "r")
@@ -39,11 +39,11 @@ def main():
 
     print("Succefsfully loaded data.")
 
-    batch_size = 16
+    batch_size = 32
 
-    train_dataset, test_dataset, _, _ = train_test_split(DATA, Hs, test_size=0.2, window_size=32, step=1, seed=1)
-    trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    trainset, valset, _, _, _, _ = train_test_val_split(DATA, Hs, test_size=0.2, val_size=0.2, window_size=32, step=1, seed=1)
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
+    valloader = DataLoader(valset, batch_size=batch_size, shuffle=False)
     print("Successfully created data loaders.")
 
 
@@ -62,18 +62,20 @@ def main():
         ).to(device)
     
     optimizer = optim.Adam(koopman.parameters(), lr=1e-3)
-    lr_scheduler = StepLR(optimizer, step_size=5, gamma=0.5)
+    lr_scheduler = StepLR(optimizer, step_size=5, gamma=0.8)
 
     criterion = nn.MSELoss()
 
-    epochs = 100
+    epochs = 200
     valid_every = 5
 
     train_loss = np.zeros(epochs)
     valid_loss = []
 
-    comment = f"{dataset_name}_Batchsize_{batch_size}"
-    writer = SummaryWriter(log_dir="runs/koopman", comment=comment)
+    comment = f"{dataset_name}_Batchsize_{batch_size}_final"
+
+
+    writer = SummaryWriter(log_dir=f"runs/{comment}")
 
     for epoch in range(epochs):
 
@@ -96,7 +98,7 @@ def main():
         
         train_loss[epoch] = running_loss / len(trainloader)
 
-        if lr_scheduler.get_last_lr()[0] > 1e-5:
+        if lr_scheduler.get_last_lr()[0] > 5e-5:
             lr_scheduler.step()
 
         writer.add_scalar("Loss/train", train_loss[epoch], epoch)
@@ -106,7 +108,7 @@ def main():
             koopman.eval()
             with torch.no_grad():
                 running_loss_val = 0.0
-                for (xtest, utest) in testloader:
+                for (xtest, utest) in valloader:
 
                     xtest, utest = xtest.to(device), utest.to(device)
 
@@ -115,12 +117,12 @@ def main():
                     v_loss = criterion(xhat, xtest[:,:-1,:,:,:]) + criterion(yhat, xtest[:,1:,:,:,:])
                     running_loss_val += v_loss.item()
 
-                valid_loss.append(running_loss_val / len(testloader))
+                valid_loss.append(running_loss_val / len(valloader))
                 writer.add_scalar("Loss/valid", valid_loss[-1], epoch)
 
             print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss[epoch]:.4f}, Valid Loss: {valid_loss[-1]:.4f}")
 
-    torch.save(koopman.state_dict(), datapath / "koopman_full_120data_100_epoch_16batch.pth")
+    torch.save(koopman.state_dict(), datapath / f"koopman_{comment}.pth")
 
     fig, ax = plt.subplots(figsize=(12, 5))
     ax.plot(train_loss, label="Train loss")
@@ -130,7 +132,7 @@ def main():
     ax.set_title("Training and validation loss")
     ax.legend()
     ax.grid()
-    plt.savefig(imgpath / f"train_loss_{comment}.png")
+    plt.savefig(imgpath / f"train_val_loss_{comment}.png")
 
 
 if __name__ == "__main__":
