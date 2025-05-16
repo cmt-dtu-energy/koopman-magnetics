@@ -83,45 +83,6 @@ def train_test_split(X : np.ndarray,
     return train_dataset, test_dataset, train_indices, test_indices
 
 
-
-import torch
-from torch.utils.data import Dataset, TensorDataset
-from typing import Optional
-import numpy as np
-
-
-class SlidingWindowDataset(Dataset):
-    '''
-    Creates a sliding window dataset from a sequence of magtense simulations.
-    Generated with chatGPT
-    '''
-    def __init__(self, X, U, window_size=32, step=1) -> None:
-        """
-        X, Y: torch.Tensor of shape (n_seq, seq_length, H, W, C)
-        U: torch.Tensor of shape (n_seq, seq_length, action_dim)
-        window_size: length of each subsequence
-        step: sliding window step size
-        """
-        n_seq, seq_len = X.shape[:2]
-        self.indices = []
-        for seq_idx in range(n_seq):
-            for start in range(0, seq_len - window_size + 1, step):
-                self.indices.append((seq_idx, start))
-        self.X = X
-        self.U = U
-        self.window_size = window_size
-
-    def __len__(self) -> int:
-        return len(self.indices)
-
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        seq_idx, start = self.indices[idx]
-        end = start + self.window_size
-        x_window = self.X[seq_idx, start:end]  # (window_size, H, W, C)
-        u_window = self.U[seq_idx, start:end]  # (window_size, action_dim)
-        return x_window, u_window
-
-
 def train_test_val_split(X : np.ndarray, 
                         Hs : np.ndarray, 
                         dataset_type : str = "window",
